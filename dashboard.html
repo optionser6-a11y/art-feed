@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#0c0b0f">
+<title>Nahim dashboard</title>
+<link rel="icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0c0b0f;--card:#15141a;--card2:#1d1c23;--line:rgba(244,239,230,.10);--ink:#f4efe6;--dim:rgba(244,239,230,.58);--gold:#ffc061;--violet:#8f6bff;--pink:#ff6fae;--blue:#3ed2ff;--ok:#7be0a4;--bad:#ff6b81;
+  --serif:"Fraunces",Georgia,"Times New Roman",serif;--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:radial-gradient(900px 500px at 85% -10%,rgba(143,107,255,.16),transparent 70%),var(--bg);color:var(--ink);font:15px/1.45 var(--sans);
+  padding:max(18px,env(safe-area-inset-top)) 16px max(28px,env(safe-area-inset-bottom));min-height:100vh}
+main{max-width:1080px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header img{width:40px;height:40px}
+h1{font:300 28px/1 var(--serif);letter-spacing:-.02em;margin:0;flex:1 1 auto}
+h1 small{display:block;font:12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--dim);padding:8px 13px;font:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--card2);color:var(--ink)}
+.btn{background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}
+.btn:hover{border-color:rgba(255,192,97,.5)}
+.live{display:inline-flex;align-items:center;gap:7px;color:var(--ok);font-size:13px}
+.live i{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(123,224,164,.6);animation:p 1.8s infinite}
+@keyframes p{70%{box-shadow:0 0 0 8px rgba(123,224,164,0)}100%{box-shadow:0 0 0 0 rgba(123,224,164,0)}}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;min-width:0}
+.kpi b{display:block;font:300 32px/1.05 var(--serif);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi span{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+.kpi em{display:block;font-style:normal;font-size:12px;color:var(--dim);margin-top:2px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.card h2{font:400 17px/1.2 var(--serif);margin:0 0 12px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card h2 small{font:12px var(--sans);color:var(--dim)}
+.chart{width:100%;height:auto;display:block}
+.chart text{fill:var(--dim);font:11px var(--sans)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font:11px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--dim);text-align:left;font-weight:400;padding:0 10px 8px 0;white-space:nowrap}
+td{padding:8px 10px 8px 0;border-top:1px solid var(--line);white-space:nowrap}
+td.r,th.r{text-align:right;padding-right:0}
+.bar{display:grid;grid-template-columns:96px 1fr auto;gap:10px;align-items:center;margin:8px 0}
+.bar>i{display:block;height:9px;border-radius:5px;background:var(--card2);overflow:hidden}
+.bar>i>u{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--violet),var(--pink),var(--gold))}
+.bar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar em{font-style:normal;color:var(--dim);font-variant-numeric:tabular-nums}
+.empty{color:var(--dim);padding:6px 0}
+.tag{display:inline-block;padding:1px 8px;border-radius:99px;background:var(--card2);border:1px solid var(--line);font-size:12px}
+.tag.on{color:var(--ok);border-color:rgba(123,224,164,.4)}
+#gate{max-width:440px;margin:14vh auto 0;text-align:center;display:grid;gap:14px}
+#gate img{width:84px;height:84px;margin:0 auto}
+#gate input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 14px;color:var(--ink);font:inherit}
+#gate p{margin:0;color:var(--dim)}
+#msg{color:var(--bad);min-height:1.4em}
+#msg code,.setup code{background:var(--card2);padding:2px 6px;border-radius:6px;color:var(--gold)}
+.setup{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;text-align:left;color:var(--dim)}
+.setup ol{margin:8px 0 0;padding-left:20px;display:grid;gap:6px}
+[hidden]{display:none!important}
+</style></head><body>
+
+<section id="gate" hidden>
+  <img src="brand/mind-logo.webp" alt="">
+  <h1 style="flex:none">Nahim dashboard</h1>
+  <p>Enter your dashboard key to see how Nahim is used.</p>
+  <form id="f" style="display:grid;gap:10px"><input id="key" type="password" autocomplete="current-password" placeholder="Dashboard key" aria-label="Dashboard key"><button class="btn" style="padding:12px">Open dashboard</button></form>
+  <div id="msg" role="alert"></div>
+  <div id="setup" class="setup" hidden>
+    <b style="color:var(--ink)">One-time setup (about 1 minute)</b>
+    <ol>
+      <li>Open Netlify, then your Nahim site, then <b>Project configuration</b>, then <b>Environment variables</b>.</li>
+      <li>Add a variable named <code>DASH_KEY</code>. For the value, type a long password of your own (8+ characters).</li>
+      <li>Go to <b>Deploys</b>, then <b>Trigger deploy</b>, then <b>Deploy site</b>. Wait until it says Published.</li>
+      <li>Come back here and enter that password.</li>
+    </ol>
+  </div>
+</section>
+
+<main id="app" hidden>
+  <header>
+    <img src="brand/mind-logo.webp" alt="">
+    <h1>Nahim<small>Usage dashboard</small></h1>
+    <div class="tools">
+      <span class="live" id="live" hidden><i></i><span id="liveN"></span></span>
+      <div class="seg" id="range" role="group" aria-label="Time range"><button data-d="7">7 days</button><button data-d="30" aria-pressed="true">30 days</button><button data-d="90">90 days</button></div>
+      <button class="btn" id="refresh">Refresh</button>
+      <button class="btn" id="out">Lock</button>
+    </div>
+  </header>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid2">
+    <div class="card"><h2>Visitors per day <small id="c1s"></small></h2><svg class="chart" id="c1" viewBox="0 0 520 190"></svg></div>
+    <div class="card"><h2>Time in the app per day <small>minutes</small></h2><svg class="chart" id="c2" viewBox="0 0 520 190"></svg></div>
+  </section>
+
+  <section class="grid2">
+    <div class="card"><h2>Growth signals <small>for scaling</small></h2><div id="signals"></div></div>
+    <div class="card"><h2>Busiest hours <small>your time zone</small></h2><svg class="chart" id="c3" viewBox="0 0 520 170"></svg></div>
+  </section>
+
+  <section class="card"><h2>Shared links <small>add <code style="color:var(--gold)">?from=name</code> to a link</small></h2><div class="tw" id="froms"></div></section>
+
+  <section class="grid2">
+    <div class="card"><h2>Countries</h2><div id="countries"></div></div>
+    <div class="card"><h2>Devices</h2><div id="devices"></div></div>
+  </section>
+
+  <section class="card"><h2>Recent visits <small id="recentS"></small></h2><div class="tw" id="recent"></div></section>
+</main>
+
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const LSg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const LSs = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+const fmtN = n => n >= 10000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n));
+const dur = s => s < 60 ? Math.round(s) + 's' : s < 3600 ? Math.floor(s / 60) + 'm ' + String(Math.round(s % 60)).padStart(2, '0') + 's' : Math.floor(s / 3600) + 'h ' + String(Math.floor(s % 3600 / 60)).padStart(2, '0') + 'm';
+const ago = ms => { const s = ms / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : Math.floor(s / 86400) + ' d ago'; };
+const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+let names = null; try { names = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
+const flag = c => c && c.length === 2 ? String.fromCodePoint(...[...c].map(x => 127397 + x.charCodeAt(0))) : '🌐';
+const country = c => c ? (names ? names.of(c) : c) : 'Unknown';
+let days = Number(LSg('nahim:dashdays')) || 30, timer = null;
+
+function show(gate, msg, setup) { $('gate').hidden = !gate; $('app').hidden = gate; $('msg').textContent = msg || ''; $('setup').hidden = !setup; }
+
+async function load() {
+  const key = LSg('nahim:dashkey');
+  if (!key) return show(true);
+  let r;
+  try { r = await fetch('/api/stats?days=' + days, { headers: { 'x-key': key }, cache: 'no-store' }); }
+  catch (e) { return $('app').hidden ? show(true, 'Could not reach the server. Check your connection.') : null; }
+  if (r.status === 503) { LSs('nahim:dashkey', null); return show(true, 'The dashboard key is not set up on Netlify yet.', true); }
+  if (r.status === 401) { LSs('nahim:dashkey', null); return show(true, 'That key is not right. Try again.'); }
+  if (!r.ok) return show(true, 'Something went wrong (' + r.status + ').');
+  render(await r.json()); show(false);
+}
+
+function bars(svg, vals, labels, color, fmt) {
+  const W = 520, H = 190, L = 34, B = 24, T = 10, n = vals.length, mx = Math.max(1, ...vals);
+  const step = (() => { const raw = mx / 4, p = Math.pow(10, Math.floor(Math.log10(raw || 1))); const f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p; })();
+  const top = Math.ceil(mx / step) * step || 1, bw = (W - L) / n;
+  let s = '';
+  for (let v = 0; v <= top + 1e-9; v += step) { const y = T + (H - T - B) * (1 - v / top); s += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="rgba(244,239,230,.08)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${fmtN(v)}</text>`; }
+  const every = Math.ceil(n / 8);
+  vals.forEach((v, i) => {
+    const h = (H - T - B) * v / top, x = L + i * bw + bw * .16, w = bw * .68;
+    s += `<rect x="${x}" y="${H - B - h}" width="${w}" height="${Math.max(h, v ? 1.5 : 0)}" rx="${Math.min(4, w / 2)}" fill="${color}"><title>${esc(labels[i])}: ${esc(fmt(v))}</title></rect>`;
+    if (i % every === 0 || i === n - 1) s += `<text x="${x + w / 2}" y="${H - 7}" text-anchor="middle">${esc(labels[i])}</text>`;
+  });
+  svg.innerHTML = s;
+}
+
+function barList(el, rows, total) {
+  if (!rows.length) { el.innerHTML = '<div class="empty">No data yet.</div>'; return; }
+  const mx = Math.max(...rows.map(r => r.n));
+  el.innerHTML = rows.map(r => `<div class="bar"><span>${r.label}</span><i><u style="width:${Math.max(3, r.n / mx * 100)}%"></u></i><em>${r.n} · ${Math.round(r.n / total * 100)}%</em></div>`).join('');
+}
+
+function render(data) {
+  const now = data.now, S = data.sessions.filter(s => s && s.v).sort((a, b) => b.t0 - a.t0);
+  const visitors = new Map();
+  for (const s of S) {
+    let v = visitors.get(s.v); if (!v) visitors.set(s.v, v = { id: s.v, sessions: 0, time: 0, days: new Set(), isNew: false, first: s.t0, last: 0, f: '' });
+    v.sessions++; v.time += s.t; v.days.add(dayKey(s.t0)); v.isNew = v.isNew || s.nv; v.first = Math.min(v.first, s.t0); v.last = Math.max(v.last, s.u || s.t0); if (s.f) v.f = s.f;
+  }
+  const nV = visitors.size, nS = S.length, tTime = S.reduce((a, s) => a + s.t, 0), swipes = S.reduce((a, s) => a + s.w, 0), likes = S.reduce((a, s) => a + s.l, 0);
+  const online = S.filter(s => now - (s.u || 0) < 90000);
+  $('live').hidden = !online.length; $('liveN').textContent = online.length + ' online now';
+  const todayK = dayKey(now), todayV = new Set(S.filter(s => dayKey(s.t0) === todayK).map(s => s.v)).size;
+  const newV = [...visitors.values()].filter(v => v.isNew).length;
+  const back = [...visitors.values()].filter(v => v.days.size > 1).length;
+  const k = (b, s, e) => `<div class="kpi"><b>${b}</b><span>${s}</span>${e ? `<em>${e}</em>` : ''}</div>`;
+  $('kpis').innerHTML =
+    k(nV, 'Visitors', todayV + ' today') + k(nS, 'Visits', nV ? (nS / nV).toFixed(1) + ' per visitor' : '') +
+    k(nS ? dur(tTime / nS) : '0s', 'Avg visit', 'time on screen') + k(dur(tTime), 'Total time', (tTime / 3600).toFixed(1) + ' hours') +
+    k(fmtN(swipes), 'Artworks seen', nS ? Math.round(swipes / nS) + ' per visit' : '') + k(fmtN(likes), 'Likes', swipes ? (likes / swipes * 100).toFixed(1) + '% of artworks' : '') +
+    k(newV, 'New visitors', nV ? Math.round(newV / nV * 100) + '% of all' : '') + k(back, 'Came back', 'on another day');
+
+  // per-day charts
+  const dk = [], lab = [];
+  for (let i = data.days - 1; i >= 0; i--) { const t = now - i * 86400e3; dk.push(dayKey(t)); const d = new Date(t); lab.push((d.getMonth() + 1) + '/' + d.getDate()); }
+  const perV = dk.map(() => new Set()), perT = dk.map(() => 0);
+  for (const s of S) { const i = dk.indexOf(dayKey(s.t0)); if (i >= 0) { perV[i].add(s.v); perT[i] += s.t; } }
+  bars($('c1'), perV.map(x => x.size), lab, 'url(#g1)', v => v + ' visitors');
+  bars($('c2'), perT.map(x => Math.round(x / 60)), lab, '#8f6bff', v => v + ' min');
+  for (const id of ['c1', 'c2']) if (!$(id).querySelector('defs')) $(id).insertAdjacentHTML('afterbegin', '<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc061"/><stop offset="1" stop-color="#ff6fae"/></linearGradient></defs>');
+  $('c1s').textContent = 'last ' + data.days + ' days';
+
+  // signals useful when thinking about growth
+  const newOnes = [...visitors.values()].filter(v => v.isNew && now - v.first > 86400e3);
+  const retained = newOnes.filter(v => v.days.size > 1).length;
+  const longVisits = S.filter(s => s.t >= 300).length, bounce = S.filter(s => s.t < 15).length;
+  const sig = (a, b, c) => `<div class="bar" style="grid-template-columns:1fr auto"><span>${a}<br><em style="font-style:normal;color:var(--dim);font-size:12px">${b}</em></span><b style="font:300 22px var(--serif)">${c}</b></div>`;
+  $('signals').innerHTML =
+    sig('Came back after day one', 'new visitors from before today who returned', newOnes.length ? Math.round(retained / newOnes.length * 100) + '%' : '–') +
+    sig('Visits over 5 minutes', 'people really settling into the feed', nS ? Math.round(longVisits / nS * 100) + '%' : '–') +
+    sig('Left within 15 seconds', 'people who did not stay', nS ? Math.round(bounce / nS * 100) + '%' : '–') +
+    sig('Installed as an app', 'visits from the home-screen app', nS ? Math.round(S.filter(s => s.a).length / nS * 100) + '%' : '–');
+
+  const hrs = Array(24).fill(0); for (const s of S) hrs[new Date(s.t0).getHours()]++;
+  bars($('c3'), hrs, hrs.map((_, i) => String(i).padStart(2, '0')), '#3ed2ff', v => v + ' visits');
+
+  // shared links
+  const byF = new Map();
+  for (const s of S) { const key = s.f || '', o = byF.get(key) || { f: key, v: new Set(), n: 0, t: 0, w: 0, l: 0, last: 0 }; o.v.add(s.v); o.n++; o.t += s.t; o.w += s.w; o.l += s.l; o.last = Math.max(o.last, s.u || s.t0); byF.set(key, o); }
+  const fr = [...byF.values()].sort((a, b) => b.v.size - a.v.size);
+  $('froms').innerHTML = fr.length ? `<table><tr><th>Link</th><th class="r">Visitors</th><th class="r">Visits</th><th class="r">Total time</th><th class="r">Avg visit</th><th class="r">Seen</th><th class="r">Likes</th><th class="r">Last visit</th></tr>` +
+    fr.map(o => `<tr><td>${o.f ? '<span class="tag">?from=' + esc(o.f) + '</span>' : '<span style="color:var(--dim)">Direct / no label</span>'}</td><td class="r">${o.v.size}</td><td class="r">${o.n}</td><td class="r">${dur(o.t)}</td><td class="r">${dur(o.t / o.n)}</td><td class="r">${fmtN(o.w)}</td><td class="r">${o.l}</td><td class="r">${ago(now - o.last)}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet.</div>';
+
+  // countries, devices
+  const cc = new Map(); for (const v of visitors.keys()) { const s = S.find(x => x.v === v); const c = s ? s.c || '' : ''; cc.set(c, (cc.get(c) || 0) + 1); }
+  barList($('countries'), [...cc].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, n]) => ({ label: flag(c) + ' ' + esc(country(c)), n })), nV || 1);
+  const dd = new Map(); for (const s of S) dd.set(s.d, (dd.get(s.d) || 0) + 1);
+  const dn = { android: 'Android', ios: 'iPhone / iPad', desktop: 'Computer' };
+  barList($('devices'), [...dd].sort((a, b) => b[1] - a[1]).map(([d, n]) => ({ label: esc(dn[d] || d), n })), nS || 1);
+
+  // recent
+  $('recentS').textContent = 'latest ' + Math.min(25, nS);
+  $('recent').innerHTML = nS ? `<table><tr><th>When</th><th>Link</th><th>Country</th><th>Device</th><th class="r">Time</th><th class="r">Seen</th><th class="r">Likes</th></tr>` +
+    S.slice(0, 25).map(s => `<tr><td>${now - (s.u || 0) < 90000 ? '<span class="tag on">live</span>' : ago(now - s.t0)}</td><td>${s.f ? esc(s.f) : '<span style="color:var(--dim)">–</span>'}</td><td>${flag(s.c)} ${esc(s.c || '–')}</td><td>${esc(dn[s.d] || s.d)}${s.a ? ' · app' : ''}</td><td class="r">${dur(s.t)}</td><td class="r">${s.w}</td><td class="r">${s.l}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet. Open Nahim on a phone and come back in a minute.</div>';
+}
+
+$('f').addEventListener('submit', e => { e.preventDefault(); const v = $('key').value.trim(); if (!v) return; LSs('nahim:dashkey', v); $('key').value = ''; $('msg').textContent = 'Checking…'; load(); });
+$('range').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; days = Number(b.dataset.d); LSs('nahim:dashdays', days); for (const x of $('range').children) x.setAttribute('aria-pressed', String(x === b)); load(); });
+for (const x of $('range').children) x.setAttribute('aria-pressed', String(Number(x.dataset.d) === days));
+$('refresh').addEventListener('click', load);
+$('out').addEventListener('click', () => { LSs('nahim:dashkey', null); show(true); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && LSg('nahim:dashkey')) load(); });
+setInterval(() => { if (!document.hidden && LSg('nahim:dashkey')) load(); }, 60000);
+load();
+})();
+</script>
+</body></html>

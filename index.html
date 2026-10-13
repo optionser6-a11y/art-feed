@@ -473,6 +473,7 @@ button{font:inherit;color:inherit}
 <div id="sheet" aria-hidden="true"><div class="in"><p class="t"></p><p class="a"></p><a target="_blank" rel="noopener noreferrer">View source ↗</a></div></div>
 <script>
 (() => {
+const trk = { swipes: 0, likes: 0 };   // counters for the owner's dashboard (see the usage block at the end)
 'use strict';
 
 /* ============================================================
@@ -784,7 +785,7 @@ function removeSlide(s) {
 
 function setCurrent(s) {
   if (s === cur || !s.isConnected) return;
-  const prev = cur; cur = s;
+  const prev = cur; cur = s; if (prev) trk.swipes++;
   if (prev && prev.isConnected) { if (prev._z.s !== 1) setZoom(prev, { s: 1, tx: 0, ty: 0 }, false); if (prev._flip) resetFlip(prev); }
   closeSheet();
   manage();
@@ -1367,7 +1368,7 @@ function like(item, s) {
   const img = s && s._img;
   const rec = { id, url: item.url, item: lean(item), likedAt: Date.now(), thumb: null,
                 tw: (img && img.naturalWidth) || 0, th: (img && img.naturalHeight) || 0 };
-  likes.set(id, rec); markLiked(item.url, true); updateBadge(true); renderLibSoon();
+  trk.likes++; likes.set(id, rec); markLiked(item.url, true); updateBadge(true); renderLibSoon();
   store.put(rec);
   // thumbnail source: a small preview when the source offers one; skip sites that refuse cross-site image reads
   const small = /artic\.edu\/iiif\//.test(item.url) ? item.url.replace(/\/full\/\d+,\//, '/full/400,/') : (safeImg(item.thumb) && !/^data:/.test(item.thumb) ? item.thumb : item.url);
@@ -2132,6 +2133,37 @@ store.all().then(list => {
   for (const r of likes.values()) markLiked(r.url, true);
   updateBadge(); renderLibSoon(true);
 });
+
+/* ---- usage counts for the owner's dashboard (/dashboard.html) ----
+   Only on the real site (*.netlify.app), never in tests, never when the browser says Do Not Track.
+   Sends: a random visitor id, seconds the app was open on screen, swipes, likes, device type.
+   Nothing about what was liked or viewed. */
+(() => {
+  try {
+    if (navigator.webdriver || navigator.doNotTrack === '1' || !/\.netlify\.app$/.test(location.hostname)) return;
+    const LSg = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, LSs = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+    const rid = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => (b % 36).toString(36)).join('');
+    let vid = LSg('nahim:vid'), isNew = false;
+    if (!vid) { vid = rid(14); LSs('nahim:vid', vid); isNew = true; }
+    const q = new URLSearchParams(location.search).get('from');            // a link like ?from=sara labels where a visit came from
+    if (q && /^[a-z0-9_-]{1,20}$/i.test(q)) LSs('nahim:from', q.toLowerCase());
+    const from = LSg('nahim:from') || '';
+    const sid = rid(12), t0 = Date.now();
+    const dev = /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'desktop';
+    const app = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    let active = 0, last = 0, sentAt = 0;
+    const send = () => {
+      sentAt = Date.now();
+      const body = JSON.stringify({ v: vid, s: sid, t0, f: from, nv: isNew, d: dev, a: app ? 1 : 0, t: Math.round(active), w: trk.swipes, l: trk.likes });
+      try { if (!(navigator.sendBeacon && navigator.sendBeacon('/api/track', new Blob([body], { type: 'text/plain' })))) fetch('/api/track', { method: 'POST', body, keepalive: true }).catch(() => {}); } catch (e) {}
+    };
+    const tick = () => { const n = Date.now(); if (last && !document.hidden) active += Math.min(5, (n - last) / 1000); last = document.hidden ? 0 : n; };
+    setInterval(() => { tick(); if (!document.hidden && Date.now() - sentAt > 30000) send(); }, 5000);
+    document.addEventListener('visibilitychange', () => { tick(); last = document.hidden ? 0 : Date.now(); if (document.hidden) send(); });
+    window.addEventListener('pagehide', () => { tick(); send(); });
+    last = Date.now(); setTimeout(send, 3000);
+  } catch (e) {}
+})();
 
 // small hook for automated tests / debugging (no UI)
 window.__feed = { feed, pool, bad, seen, get cur() { return cur; }, live, ready, hostCool, likes, like, buildCollections, classify, viewer, FETCH, get libOpen() { return libOpen; } };
