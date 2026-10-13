@@ -159,6 +159,11 @@ const HI = DPR >= 1.5;
 const feed = document.getElementById('feed');
 const sheet = document.getElementById('sheet');
 
+/* ---------------- diagnostics: add ?debug=1 to the address to see what the feed is doing ---------------- */
+const DEBUG = qs.get('debug') === '1';
+const dlog = [];
+function dbg(m) { if (!DEBUG) return; dlog.push(new Date().toTimeString().slice(3, 8) + ' ' + m); if (dlog.length > 14) dlog.shift(); }
+
 /* ---------------- utilities ---------------- */
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const strip = h => { const d = document.createElement('div'); d.innerHTML = String(h || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); };
@@ -192,7 +197,8 @@ function refillBag() {
   let b = fresh;
   if (fresh.length < 20) {
     b = fresh.concat(shuffle(free.filter(it => seen.has(it.url) && !recentSet.has(it.url))));
-    if (!b.length && !liveInflight) b = shuffle(free.filter(it => seen.has(it.url)));   // tiny pool / offline: repeat rather than stop
+    if (!b.length && (!liveInflight || (starvedSince && Date.now() - starvedSince > 6000)))
+      b = shuffle(free.filter(it => seen.has(it.url) && it.url !== lastUrl));   // tiny pool / offline / slow network: repeat rather than stop
   }
   if (fresh.length < 40) setTimeout(liveTick, 0);
   b.unshift(...back);
@@ -245,10 +251,12 @@ const saveSoon = () => { clearTimeout(saveT); saveT = setTimeout(saveState, 4000
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveState(); });
 window.addEventListener('pagehide', saveState);
 
+const decodeSoon = im => Promise.race([im.decode ? im.decode().catch(() => {}) : Promise.resolve(), new Promise(r => setTimeout(r, 1500))]);
+
 /* ---------------- load-ahead: a slide is only added once its image has loaded ---------------- */
 const READY_MAX = 5, PARALLEL = 3, AHEAD = 6;
 const ready = [];
-let inflight = 0;
+let inflight = 0, lastProgress = Date.now(), starvedSince = 0;
 function pump() {
   while (ready.length + inflight < READY_MAX && inflight < PARALLEL) {
     const it = nextItem(); if (!it) break;
@@ -259,8 +267,9 @@ function prefetch(it) {
   inflight++; pending.add(it.url);
   const cands = candidates(it), im = new Image();
   let i = 0, to = 0, done = false;
+  const hard = setTimeout(() => { if (!done) { im.onload = im.onerror = null; im.removeAttribute('src'); deferred.push(it); dbg('prefetch gave up'); finish(null); } }, 30000);
   const finish = src => {
-    if (done) return; done = true; clearTimeout(to); inflight--;
+    if (done) return; done = true; clearTimeout(to); clearTimeout(hard); inflight = Math.max(0, inflight - 1); lastProgress = Date.now();
     if (!src) pending.delete(it.url);
     if (src) { ready.push({ it, src, im }); fill(); }
     pump();
@@ -276,7 +285,7 @@ function prefetch(it) {
     to = setTimeout(() => { im.onload = im.onerror = null; im.removeAttribute('src'); hostResult(u, false); next(); }, 15000);
     im.onload = () => {
       clearTimeout(to); hostResult(u, true);
-      (im.decode ? im.decode().catch(() => {}) : Promise.resolve()).then(() => finish(u));
+      decodeSoon(im).then(() => finish(u));
     };
     im.onerror = () => { clearTimeout(to); hostResult(u, false); next(); };
     im.src = u;
@@ -337,7 +346,7 @@ function tryLoad(s) {
   img.onload = () => {
     clearTimeout(s._to);
     const show = () => { if (s._st === 'loading' && img.getAttribute('src') === url) { s._st = 'loaded'; img.classList.add('in'); } };
-    (img.decode ? img.decode().catch(() => {}) : Promise.resolve()).then(show);
+    decodeSoon(img).then(show);
   };
   img.onerror = () => { clearTimeout(s._to); fail(s); };
   img.src = url;
@@ -345,7 +354,7 @@ function tryLoad(s) {
 function fail(s) {
   if (s._st !== 'loading') return;
   if (s._ci < s._cands.length - 1) { s._ci++; tryLoad(s); return; }
-  bad.add(s._item.url);
+  bad.add(s._item.url); dbg('slide image failed, removed');
   removeSlide(s);
 }
 function unload(s) {
@@ -390,13 +399,17 @@ function manage() {
 /* prune old DOM nodes once scrolling has settled */
 let settleT = 0, touching = false;
 function onSettle() {
-  if (touching || !cur) return;
+  if ((touching && performance.now() - lastTouchTs < 1500) || !cur) { if (cur) settleT = setTimeout(onSettle, 400); return; }
   pickCurrentFromScroll();
   if (idx(cur) < 40) return;
   for (let i = 0; i < 25; i++) { const k = feed.firstElementChild; if (!k || k === cur) break; io.unobserve(k); unload(k); k.remove(); }
   feed.scrollTop = cur.offsetTop;
 }
-feed.addEventListener('scroll', () => { clearTimeout(settleT); settleT = setTimeout(onSettle, 180); }, { passive: true });
+feed.addEventListener('scroll', () => {
+  lastScrollTs = performance.now();
+  if (T && T.lpTimer) clearTimeout(T.lpTimer);
+  clearTimeout(settleT); settleT = setTimeout(onSettle, 180);
+}, { passive: true });
 if ('onscrollend' in window) feed.addEventListener('scrollend', () => { clearTimeout(settleT); settleT = setTimeout(onSettle, 30); });
 
 /* ---------------- zoom (double-tap / pinch / pan) ---------------- */
@@ -594,7 +607,7 @@ for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEv
 
 /* ---------------- touch gestures ---------------- */
 const slideOf = el => el && el.closest ? el.closest('.slide') : null;
-let T = null, lastTap = null;
+let T = null, lastTap = null, lastTouchTs = 0, lastScrollTs = 0;
 const dist = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 
 function startPinch(s, e) {
@@ -611,11 +624,14 @@ feed.addEventListener('touchstart', e => {
     return;
   }
   const t = e.touches[0];
-  T = { s, x0: t.clientX, y0: t.clientY, t0: performance.now(), mode: null, moved: false, lp: false,
+  lastTouchTs = performance.now(); dbg('touchstart');
+  T = { s, x0: t.clientX, y0: t.clientY, t0: performance.now(), top0: feed.scrollTop, mode: null, moved: false, lp: false,
         onBack: !!e.target.closest('.back'), hadSheet: sheetOpen, z0: s ? { ...s._z } : null, vs: [[t.clientX, performance.now()]] };
   if (s && !s._flip && !T.onBack && !sheetOpen) {
     const G = T;
-    G.lpTimer = setTimeout(() => { if (T === G && !G.moved) { G.lp = true; openSheet(s._item); } }, 500);
+    G.lpTimer = setTimeout(() => {
+      if (T === G && !G.moved && Math.abs(feed.scrollTop - G.top0) < 2 && performance.now() - lastScrollTs > 300) { G.lp = true; openSheet(s._item); dbg('long-press'); }
+    }, 500);
   }
 }, { passive: false });
 
@@ -632,20 +648,27 @@ feed.addEventListener('touchmove', e => {
     return;
   }
   const t = e.touches[0], dx = t.clientX - T.x0, dy = t.clientY - T.y0;
+  lastTouchTs = performance.now();
   T.vs.push([t.clientX, performance.now()]); if (T.vs.length > 6) T.vs.shift();
   if (!T.moved && Math.hypot(dx, dy) > 10) { T.moved = true; clearTimeout(T.lpTimer); }
   if (T.lp) { e.preventDefault(); return; }
   const s = T.s; if (!s) return;
   if (zoomed(s) && !T.onBack) {
     e.preventDefault();
+    if (T.mode === 'none') return;
     if (T.mode !== 'pan') { T.mode = 'pan'; T.x0 = t.clientX; T.y0 = t.clientY; T.z0 = { ...s._z }; return; }
-    setZoom(s, { s: T.z0.s, tx: T.z0.tx + dx, ty: T.z0.ty + dy }, false);
+    const pdx = t.clientX - T.x0, pdy = t.clientY - T.y0, want = T.z0.ty + pdy;
+    setZoom(s, { s: T.z0.s, tx: T.z0.tx + pdx, ty: want }, false);
+    // already at the top/bottom edge and still pushing vertically: leave zoom so the feed can never get stuck
+    if (Math.abs(want - s._z.ty) > 90 && Math.abs(pdy) > 2 * Math.abs(pdx)) { setZoom(s, { s: 1, tx: 0, ty: 0 }, true); T.mode = 'none'; dbg('zoom released by swipe'); }
     return;
   }
   if (!T.mode) {
-    if (Math.abs(dx) > Math.abs(dy)) e.preventDefault();      // keep iOS from starting a scroll on a sideways drag
+    // block the browser's own scrolling only for a clearly sideways drag; a thumb that wobbles a few px must still scroll
+    if (Math.abs(dx) >= 6 && Math.abs(dx) > 2 * Math.abs(dy)) e.preventDefault();
     if (Math.hypot(dx, dy) < 10) return;
-    T.mode = Math.abs(dx) > Math.abs(dy) ? 'flip' : 'scroll';
+    T.mode = Math.abs(dx) > 1.3 * Math.abs(dy) && Math.abs(feed.scrollTop - T.top0) < 2 ? 'flip' : 'scroll';
+    dbg('swipe ' + T.mode);
     if (T.mode === 'flip') { if (s._anim && s._anim.playState === 'running') { T.mode = 'none'; return; } beginFlip(s); }
   }
   if (T.mode === 'flip') { e.preventDefault(); dragFlip(s, dx); }
@@ -673,8 +696,10 @@ function touchEnd(e) {
   }
   if (e.type === 'touchcancel' || G.moved || G.onBack || G.hadSheet || !G.s || G.s._flip) return;
   const ct = e.changedTouches[0], now = performance.now();
+  const still = Math.hypot(ct.clientX - G.x0, ct.clientY - G.y0) < 12 && now - G.t0 < 350;
+  if (!still || Math.abs(feed.scrollTop - G.top0) > 1 || now - lastScrollTs < 200) { lastTap = null; return; }
   if (lastTap && now - lastTap.t < 320 && Math.hypot(ct.clientX - lastTap.x, ct.clientY - lastTap.y) < 40 && lastTap.s === G.s) {
-    e.preventDefault(); lastTap = null; toggleZoom(G.s, ct.clientX, ct.clientY);
+    e.preventDefault(); lastTap = null; toggleZoom(G.s, ct.clientX, ct.clientY); dbg('double-tap zoom ' + G.s._z.s.toFixed(2));
   } else lastTap = { t: now, x: ct.clientX, y: ct.clientY, s: G.s };
 }
 feed.addEventListener('touchend', touchEnd, { passive: false });
@@ -871,8 +896,8 @@ let liveInflight = 0, appendsSinceFetch = 0;
 async function pull(src) {
   if (src.busy || src.done || src.retryAt > Date.now()) return;
   src.busy = true; liveInflight++;
-  try { addToPool((await FETCH[src.type](src)).filter(Boolean), true); src.fails = 0; }
-  catch (e) { src.fails++; src.retryAt = Date.now() + Math.min(10 * 60e3, 15e3 * 2 ** src.fails); }   // back off, never give up for good
+  try { const n = addToPool((await FETCH[src.type](src)).filter(Boolean), true); src.fails = 0; dbg(src.id + ' +' + n); }
+  catch (e) { src.fails++; dbg(src.id + ' failed (' + (e && e.name) + ')'); src.retryAt = Date.now() + Math.min(10 * 60e3, 15e3 * 2 ** src.fails); }   // back off, never give up for good
   finally { src.busy = false; liveInflight--; pump(); saveSoon(); }
 }
 function pickSource() {
@@ -880,16 +905,46 @@ function pickSource() {
   for (const s of live) if (!s.done && !s.busy && s.retryAt <= Date.now()) for (let i = 0; i < (s.weight || 1); i++) w.push(s);
   return w.length ? w[Math.floor(Math.random() * w.length)] : null;
 }
-function liveTick() {
+function liveTick(force) {
   if (!LIVE || liveInflight >= 2) return;
-  appendsSinceFetch++;
+  appendsSinceFetch += force ? 0 : 1;
   const unseenQueued = bag.reduce((n, it) => n + (seen.has(it.url) ? 0 : 1), 0);
   // only ask for more when the unseen queue runs low (keeps API use light; long sessions still never run dry)
-  if (unseenQueued > 60 && appendsSinceFetch < 25) return;
+  if (!force && unseenQueued > 80 && appendsSinceFetch < 25) return;
   appendsSinceFetch = 0;
   const s = pickSource(); if (s) pull(s);
 }
 setInterval(() => { if (!document.hidden) liveTick(); }, 20000);
+
+/* ---------------- watchdog: if the next artwork is not there yet, keep the pipeline moving ---------------- */
+setInterval(() => {
+  if (document.hidden || !cur) return;
+  const ahead = feed.children.length - 1 - idx(cur);
+  if (ahead >= 2) { starvedSince = 0; return; }
+  if (ready.length) { fill(); return; }
+  if (!starvedSince) starvedSince = Date.now();
+  if (inflight && Date.now() - lastProgress > 20000) { inflight = 0; lastProgress = Date.now(); dbg('watchdog: restarted stalled downloads'); }
+  liveTick(true); pump();
+}, 1500);
+
+if (DEBUG) {
+  const box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;left:6px;top:calc(6px + env(safe-area-inset-top));z-index:50;margin:0;padding:8px 10px;max-width:calc(100% - 12px);' +
+    'font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;color:#d8ffd8;background:rgba(0,0,0,.72);border-radius:8px;pointer-events:none;white-space:pre-wrap';
+  document.body.appendChild(box);
+  window.addEventListener('error', e => dbg('ERROR ' + e.message));
+  window.addEventListener('unhandledrejection', e => dbg('REJECT ' + (e.reason && e.reason.message || e.reason)));
+  setInterval(() => {
+    const kids = feed.children, i = cur ? idx(cur) : -1, z = cur ? cur._z.s : 1;
+    const cool = Object.keys(hostCool).filter(h => hostCool[h] > Date.now());
+    box.textContent = [
+      `slide ${i + 1}/${kids.length}  ahead ${kids.length - 1 - i}  ready ${ready.length}  loading ${inflight}`,
+      `pool ${pool.length}  seen ${seen.size}  bad ${bad.size}  sources busy ${liveInflight}`,
+      `locked ${feed.classList.contains('locked')}  zoom ${z.toFixed(2)}  flipped ${!!(cur && cur._flip)}  gesture ${T ? T.mode : '-'}`,
+      `scrollTop ${Math.round(feed.scrollTop)}  height ${feed.clientHeight}  skipped sites ${cool.join(', ') || '-'}`,
+      '---', ...dlog].join('\n');
+  }, 400);
+}
 
 /* ============================================================
    START
