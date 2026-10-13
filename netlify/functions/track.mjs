@@ -12,7 +12,8 @@ export function clean(b, country, now = Date.now()) {
   if (!s || !v || !Number.isFinite(t0) || t0 > now + 3600e3 || t0 < now - 2 * 86400e3) return null;
   return {
     s, v, t0: Math.round(t0),
-    f: tag(b.f, /^[a-z0-9_-]{1,20}$/i).toLowerCase(),
+    f: tag(b.f, /^[a-z0-9_-]{1,20}$/i).toLowerCase(),   // old links with ?from= (no longer sent)
+    m: tag(b.m, /^[\w .()+-]{1,30}$/), b: tag(b.b, /^[a-z]{3,10}$/), sc: tag(b.sc, /^\d{2,5}x\d{2,5}@[\d.]{1,4}$/),
     nv: b.nv === true, d: ['android', 'ios', 'desktop'].includes(b.d) ? b.d : 'desktop', a: b.a ? 1 : 0,
     t: num(b.t, 86400), w: num(b.w, 100000), l: num(b.l, 100000), o: b.o === 0 ? 0 : 1,
     c: tag(country, /^[A-Z]{2}$/), u: now,

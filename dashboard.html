@@ -87,6 +87,7 @@ td.r,th.r{text-align:right;padding-right:0}
     <div class="tools">
       <span class="live" id="live" hidden><i></i><span id="liveN"></span></span>
       <div class="seg" id="range" role="group" aria-label="Time range"><button data-d="7">7 days</button><button data-d="30" aria-pressed="true">30 days</button><button data-d="90">90 days</button></div>
+      <label class="live" style="color:var(--dim);cursor:pointer"><input type="checkbox" id="hideEmpty" checked style="accent-color:#ffc061"> Hide empty visits <span id="hiddenN"></span></label>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="out">Lock</button>
     </div>
@@ -95,7 +96,7 @@ td.r,th.r{text-align:right;padding-right:0}
   <section class="kpis" id="kpis"></section>
 
   <section class="grid2">
-    <div class="card"><h2>Visitors per day <small id="c1s"></small></h2><svg class="chart" id="c1" viewBox="0 0 520 190"></svg></div>
+    <div class="card"><h2>Devices per day <small id="c1s"></small></h2><svg class="chart" id="c1" viewBox="0 0 520 190"></svg></div>
     <div class="card"><h2>Time in the app per day <small>minutes</small></h2><svg class="chart" id="c2" viewBox="0 0 520 190"></svg></div>
   </section>
 
@@ -104,11 +105,11 @@ td.r,th.r{text-align:right;padding-right:0}
     <div class="card"><h2>Busiest hours <small>your time zone</small></h2><svg class="chart" id="c3" viewBox="0 0 520 170"></svg></div>
   </section>
 
-  <section class="card"><h2>Shared links <small>add <code style="color:var(--gold)">?from=name</code> to a link</small></h2><div class="tw" id="froms"></div></section>
+  <section class="card"><h2>Devices <small>each phone or computer counts once, however often it opens Nahim</small></h2><div class="tw" id="froms"></div></section>
 
   <section class="grid2">
     <div class="card"><h2>Countries</h2><div id="countries"></div></div>
-    <div class="card"><h2>Devices</h2><div id="devices"></div></div>
+    <div class="card"><h2>Device types</h2><div id="devices"></div></div>
   </section>
 
   <section class="card"><h2>Recent visits <small id="recentS"></small></h2><div class="tw" id="recent"></div></section>
@@ -127,7 +128,7 @@ const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + Stri
 let names = null; try { names = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
 const flag = c => c && c.length === 2 ? String.fromCodePoint(...[...c].map(x => 127397 + x.charCodeAt(0))) : '🌐';
 const country = c => c ? (names ? names.of(c) : c) : 'Unknown';
-let days = Number(LSg('nahim:dashdays')) || 30, timer = null;
+let days = Number(LSg('nahim:dashdays')) || 30, timer = null, lastData = null;
 
 function show(gate, msg, setup) { $('gate').hidden = !gate; $('app').hidden = gate; $('msg').textContent = msg || ''; $('setup').hidden = !setup; }
 
@@ -140,7 +141,7 @@ async function load() {
   if (r.status === 503) { LSs('nahim:dashkey', null); return show(true, 'The dashboard key is not set up on Netlify yet.', true); }
   if (r.status === 401) { LSs('nahim:dashkey', null); return show(true, 'That key is not right. Try again.'); }
   if (!r.ok) return show(true, 'Something went wrong (' + r.status + ').');
-  render(await r.json()); show(false);
+  lastData = await r.json(); render(lastData); show(false);
 }
 
 function bars(svg, vals, labels, color, fmt) {
@@ -165,11 +166,22 @@ function barList(el, rows, total) {
 }
 
 function render(data) {
-  const now = data.now, S = data.sessions.filter(s => s && s.v).sort((a, b) => b.t0 - a.t0);
+  const now = data.now, hideEmpty = $('hideEmpty').checked;
+  let S = data.sessions.filter(s => s && s.v).map(s => ({ ...s })).sort((a, b) => b.t0 - a.t0);
+  // one device = one visitor: the same phone is recognised again even if its storage was cleared or it uses the home-screen app
+  const sigOf = s => [s.d, s.m || '', s.b || '', s.sc || '', s.c || ''].join('|');
+  const dev = new Map();
+  for (const s of [...S].reverse()) { const g = sigOf(s); if (s.sc && !dev.has(g)) dev.set(g, s.v); }
+  for (const s of S) if (s.sc) s.v = dev.get(sigOf(s));
+  const empty = s => s.w === 0 && s.t < 60 && now - (s.u || 0) > 75000;
+  const hidden = hideEmpty ? S.filter(empty).length : 0;
+  if (hideEmpty) S = S.filter(s => !empty(s));
+  $('hiddenN').textContent = hidden ? '(' + hidden + ' hidden)' : '';
   const visitors = new Map();
   for (const s of S) {
     let v = visitors.get(s.v); if (!v) visitors.set(s.v, v = { id: s.v, sessions: 0, time: 0, days: new Set(), isNew: false, first: s.t0, last: 0, f: '' });
-    v.sessions++; v.time += s.t; v.days.add(dayKey(s.t0)); v.isNew = v.isNew || s.nv; v.first = Math.min(v.first, s.t0); v.last = Math.max(v.last, s.u || s.t0); if (s.f) v.f = s.f;
+    v.sessions++; v.time += s.t; v.days.add(dayKey(s.t0)); v.isNew = v.isNew || s.nv; v.first = Math.min(v.first, s.t0); v.last = Math.max(v.last, s.u || s.t0);
+    v.w = (v.w || 0) + s.w; v.l = (v.l || 0) + s.l; if (!v.s0 || (s.m && !v.s0.m)) v.s0 = s;
   }
   const nV = visitors.size, nS = S.length, tTime = S.reduce((a, s) => a + s.t, 0), swipes = S.reduce((a, s) => a + s.w, 0), likes = S.reduce((a, s) => a + s.l, 0);
   const isOn = s => s.o !== 0 && now - (s.u || 0) < 75000;          // still open on screen, pinged in the last 75 s
@@ -180,17 +192,17 @@ function render(data) {
   const back = [...visitors.values()].filter(v => v.days.size > 1).length;
   const k = (b, s, e) => `<div class="kpi"><b>${b}</b><span>${s}</span>${e ? `<em>${e}</em>` : ''}</div>`;
   $('kpis').innerHTML =
-    k(nV, 'Visitors', todayV + ' today') + k(nS, 'Visits', nV ? (nS / nV).toFixed(1) + ' per visitor' : '') +
+    k(nV, 'Devices', todayV + ' today') + k(nS, 'Visits', nV ? (nS / nV).toFixed(1) + ' per device' : '') +
     k(nS ? dur(tTime / nS) : '0s', 'Avg visit', 'time on screen') + k(dur(tTime), 'Total time', (tTime / 3600).toFixed(1) + ' hours') +
     k(fmtN(swipes), 'Artworks seen', nS ? Math.round(swipes / nS) + ' per visit' : '') + k(fmtN(likes), 'Likes', swipes ? (likes / swipes * 100).toFixed(1) + '% of artworks' : '') +
-    k(newV, 'New visitors', nV ? Math.round(newV / nV * 100) + '% of all' : '') + k(back, 'Came back', 'on another day');
+    k(newV, 'New devices', nV ? Math.round(newV / nV * 100) + '% of all' : '') + k(back, 'Came back', 'on another day');
 
   // per-day charts
   const dk = [], lab = [];
   for (let i = data.days - 1; i >= 0; i--) { const t = now - i * 86400e3; dk.push(dayKey(t)); const d = new Date(t); lab.push((d.getMonth() + 1) + '/' + d.getDate()); }
   const perV = dk.map(() => new Set()), perT = dk.map(() => 0);
   for (const s of S) { const i = dk.indexOf(dayKey(s.t0)); if (i >= 0) { perV[i].add(s.v); perT[i] += s.t; } }
-  bars($('c1'), perV.map(x => x.size), lab, 'url(#g1)', v => v + ' visitors');
+  bars($('c1'), perV.map(x => x.size), lab, 'url(#g1)', v => v + ' devices');
   bars($('c2'), perT.map(x => Math.round(x / 60)), lab, '#8f6bff', v => v + ' min');
   for (const id of ['c1', 'c2']) if (!$(id).querySelector('defs')) $(id).insertAdjacentHTML('afterbegin', '<defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffc061"/><stop offset="1" stop-color="#ff6fae"/></linearGradient></defs>');
   $('c1s').textContent = 'last ' + data.days + ' days';
@@ -209,30 +221,34 @@ function render(data) {
   const hrs = Array(24).fill(0); for (const s of S) hrs[new Date(s.t0).getHours()]++;
   bars($('c3'), hrs, hrs.map((_, i) => String(i).padStart(2, '0')), '#3ed2ff', v => v + ' visits');
 
-  // shared links
-  const byF = new Map();
-  for (const s of S) { const key = s.f || '', o = byF.get(key) || { f: key, v: new Set(), n: 0, t: 0, w: 0, l: 0, last: 0 }; o.v.add(s.v); o.n++; o.t += s.t; o.w += s.w; o.l += s.l; o.last = Math.max(o.last, s.u || s.t0); byF.set(key, o); }
-  const fr = [...byF.values()].sort((a, b) => b.v.size - a.v.size);
-  $('froms').innerHTML = fr.length ? `<table><tr><th>Link</th><th class="r">Visitors</th><th class="r">Visits</th><th class="r">Total time</th><th class="r">Avg visit</th><th class="r">Seen</th><th class="r">Likes</th><th class="r">Last visit</th></tr>` +
-    fr.map(o => `<tr><td>${o.f ? '<span class="tag">?from=' + esc(o.f) + '</span>' : '<span style="color:var(--dim)">Direct / no label</span>'}</td><td class="r">${o.v.size}</td><td class="r">${o.n}</td><td class="r">${dur(o.t)}</td><td class="r">${dur(o.t / o.n)}</td><td class="r">${fmtN(o.w)}</td><td class="r">${o.l}</td><td class="r">${ago(now - o.last)}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet.</div>';
+  // one row per device, named from what it is
+  const dn = { android: 'Android', ios: 'iPhone / iPad', desktop: 'Computer' }, bn = { brave: 'Brave', chrome: 'Chrome', safari: 'Safari', firefox: 'Firefox', edge: 'Edge', samsung: 'Samsung Internet' };
+  const base = s => (s.m || ((s.d === 'ios' ? 'iPhone' : s.d === 'android' ? 'Android' : 'Computer') + (s.sc ? ' ' + s.sc.split('@')[0].replace('x', '×') : ''))) + (bn[s.b] ? ' · ' + bn[s.b] : '') + (s.c ? ' · ' + country(s.c) : '');
+  const list = [...visitors.values()].sort((a, b) => a.first - b.first), seenN = new Map();
+  for (const v of list) { const nm = base(v.s0); seenN.set(nm, (seenN.get(nm) || 0) + 1); v.name = nm; v.dup = seenN.get(nm); }
+  for (const v of list) if (seenN.get(v.name) > 1) v.name += ' #' + v.dup;
+  const nameOf = new Map(list.map(v => [v.id, v.name]));
+  $('froms').innerHTML = list.length ? `<table><tr><th>Device</th><th class="r">Visits</th><th class="r">Days</th><th class="r">Total time</th><th class="r">Avg visit</th><th class="r">Seen</th><th class="r">Likes</th><th class="r">First visit</th><th class="r">Last visit</th></tr>` +
+    [...list].sort((a, b) => b.last - a.last).map(v => `<tr><td>${flag(v.s0.c)} ${esc(v.name)}${v.s0.a ? ' <span class="tag">app</span>' : ''}</td><td class="r">${v.sessions}</td><td class="r">${v.days.size}</td><td class="r">${dur(v.time)}</td><td class="r">${dur(v.time / v.sessions)}</td><td class="r">${fmtN(v.w)}</td><td class="r">${v.l}</td><td class="r">${ago(now - v.first)}</td><td class="r">${now - v.last < 75000 && S.some(x => x.v === v.id && isOn(x)) ? '<span class="tag on">live</span>' : ago(now - v.last)}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet.</div>';
 
   // countries, devices
   const cc = new Map(); for (const v of visitors.keys()) { const s = S.find(x => x.v === v); const c = s ? s.c || '' : ''; cc.set(c, (cc.get(c) || 0) + 1); }
   barList($('countries'), [...cc].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([c, n]) => ({ label: flag(c) + ' ' + esc(country(c)), n })), nV || 1);
-  const dd = new Map(); for (const s of S) dd.set(s.d, (dd.get(s.d) || 0) + 1);
-  const dn = { android: 'Android', ios: 'iPhone / iPad', desktop: 'Computer' };
-  barList($('devices'), [...dd].sort((a, b) => b[1] - a[1]).map(([d, n]) => ({ label: esc(dn[d] || d), n })), nS || 1);
+  const dd = new Map(); for (const v of visitors.values()) dd.set(v.s0.d, (dd.get(v.s0.d) || 0) + 1);
+  barList($('devices'), [...dd].sort((a, b) => b[1] - a[1]).map(([d, n]) => ({ label: esc(dn[d] || d), n })), nV || 1);
 
   // recent
   $('recentS').textContent = 'latest ' + Math.min(25, nS);
-  $('recent').innerHTML = nS ? `<table><tr><th>When</th><th>Link</th><th>Country</th><th>Device</th><th class="r">Time</th><th class="r">Seen</th><th class="r">Likes</th></tr>` +
-    S.slice(0, 25).map(s => `<tr><td>${isOn(s) ? '<span class="tag on">live</span>' : ago(now - s.t0)}</td><td>${s.f ? esc(s.f) : '<span style="color:var(--dim)">–</span>'}</td><td>${flag(s.c)} ${esc(s.c || '–')}</td><td>${esc(dn[s.d] || s.d)}${s.a ? ' · app' : ''}</td><td class="r">${dur(s.t)}</td><td class="r">${s.w}</td><td class="r">${s.l}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet. Open Nahim on a phone and come back in a minute.</div>';
+  $('recent').innerHTML = nS ? `<table><tr><th>When</th><th>Device</th><th class="r">Time</th><th class="r">Seen</th><th class="r">Likes</th></tr>` +
+    S.slice(0, 25).map(s => `<tr><td>${isOn(s) ? '<span class="tag on">live</span>' : ago(now - s.t0)}</td><td>${flag(s.c)} ${esc(nameOf.get(s.v) || '')}${s.a ? ' · app' : ''}</td><td class="r">${dur(s.t)}</td><td class="r">${s.w}</td><td class="r">${s.l}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet. Open Nahim on a phone and come back in a minute.</div>';
 }
 
 $('f').addEventListener('submit', e => { e.preventDefault(); const v = $('key').value.trim(); if (!v) return; LSs('nahim:dashkey', v); $('key').value = ''; $('msg').textContent = 'Checking…'; load(); });
 $('range').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; days = Number(b.dataset.d); LSs('nahim:dashdays', days); for (const x of $('range').children) x.setAttribute('aria-pressed', String(x === b)); load(); });
 for (const x of $('range').children) x.setAttribute('aria-pressed', String(Number(x.dataset.d) === days));
 $('refresh').addEventListener('click', load);
+$('hideEmpty').checked = LSg('nahim:dashhide') !== '0';
+$('hideEmpty').addEventListener('change', () => { LSs('nahim:dashhide', $('hideEmpty').checked ? '1' : '0'); if (lastData) render(lastData); });
 $('out').addEventListener('click', () => { LSs('nahim:dashkey', null); show(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && LSg('nahim:dashkey')) load(); });
 setInterval(() => { if (!document.hidden && LSg('nahim:dashkey')) load(); }, 60000);
