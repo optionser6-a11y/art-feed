@@ -1,6 +1,6 @@
 // Service worker: makes Nahim installable and lets the app itself open
 // without a connection. Artwork always comes fresh from the network.
-const CACHE = 'artfeed-shell-v6';
+const CACHE = 'artfeed-shell-v7';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'brand/mind-logo.webp', 'brand/mind-hero.webp'];
 
 self.addEventListener('install', e => {
