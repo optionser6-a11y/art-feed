@@ -152,7 +152,7 @@ button{font:inherit;color:inherit}
 .search input::placeholder{color:rgba(244,239,230,.42)}
 .search:focus-within{box-shadow:inset 0 0 0 1px rgba(244,239,230,.35)}
 .trow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.fchips{display:flex;gap:6px;flex:1;min-width:0}
+.fchips{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 auto;min-width:0}
 .fchip{height:38px;padding:0 15px;border-radius:999px;border:0;cursor:pointer;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--line);
   font-size:14px;display:inline-flex;align-items:center;gap:6px;transition:background .2s,color .2s}
 .fchip em{font-style:normal;font-size:12px;opacity:.55;font-variant-numeric:tabular-nums}
@@ -275,6 +275,7 @@ button{font:inherit;color:inherit}
           <button type="button" class="fchip" data-f="all" aria-pressed="true">All</button>
           <button type="button" class="fchip" data-f="artist" aria-pressed="false">Artists <em></em></button>
           <button type="button" class="fchip" data-f="style" aria-pressed="false">Styles <em></em></button>
+          <button type="button" class="fchip" data-f="place" aria-pressed="false">Places <em></em></button>
         </div>
         <button type="button" class="sort" data-act="sort" aria-label="Change sort order"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/></svg><span>Most items</span></button>
       </div>
@@ -339,7 +340,43 @@ const SOURCES = [
   { id: 'aivazovsky', type: 'commons', kind: 'Painting', n: 1300, q: 'deepcat:"Ivan Aivazovsky" filetype:bitmap' },
   // Cleveland Museum of Art open access (CC0)
   { id: 'cma-prints', type: 'cleveland', kind: 'Woodblock print', weight: 2, n: 600, params: { type: 'Print', department: 'Japanese Art' } },
-  { id: 'cma-paint', type: 'cleveland', kind: 'Painting', weight: 2, n: 3900, params: { type: 'Painting' } },
+  // ---- art from cultures around the world ----
+  // `style` names the style collection a like is filed into; `artist` is used when a source holds one artist only.
+  // China
+  { id: 'cn-npm', type: 'commons', kind: 'Painting', place: 'China', style: 'Chinese Painting', n: 2070, q: 'deepcat:"Paintings in the National Palace Museum" filetype:bitmap' },
+  { id: 'cn-met', type: 'commons', kind: 'Painting', place: 'China', style: 'Chinese Painting', n: 5070, q: 'deepcat:"Chinese paintings in the Metropolitan Museum of Art" filetype:bitmap' },
+  { id: 'cma-china', type: 'cleveland', kind: 'Painting', style: 'Chinese Painting', n: 560, params: { type: 'Painting', department: 'Chinese Art' } },
+  // Korea, Japan
+  { id: 'cma-korea', type: 'cleveland', kind: 'Painting', style: 'Korean Painting', n: 60, params: { type: 'Painting', department: 'Korean Art' } },
+  { id: 'cma-japan', type: 'cleveland', kind: 'Painting', style: 'Japanese Painting', n: 490, params: { type: 'Painting', department: 'Japanese Art' } },
+  // India, Tibet
+  { id: 'cma-india', type: 'cleveland', kind: 'Painting', style: 'Indian Painting', weight: 2, n: 1860, params: { type: 'Painting', department: 'Indian and Southeast Asian Art' } },
+  { id: 'rajput', type: 'commons', kind: 'Painting', place: 'India', style: 'Rajput Painting', noArtist: true, n: 2920, q: 'deepcat:"Rajput painting" filetype:bitmap' },
+  { id: 'ravivarma', type: 'commons', kind: 'Painting', place: 'India', style: 'Indian Painting', artist: 'Raja Ravi Varma', n: 160, q: 'deepcat:"Paintings by Raja Ravi Varma" filetype:bitmap' },
+  { id: 'thangka', type: 'commons', kind: 'Painting', place: 'Tibet', style: 'Tibetan Thangka', noArtist: true, n: 1330, q: 'deepcat:"Thangka" filetype:bitmap' },
+  // Persia, the Ottoman world, Islamic manuscripts
+  { id: 'persian', type: 'commons', kind: 'Miniature', place: 'Iran (Persia)', style: 'Persian Miniatures', weight: 2, n: 9390, q: 'deepcat:"Persian miniatures" filetype:bitmap' },
+  { id: 'ottoman', type: 'commons', kind: 'Miniature', place: 'Ottoman Empire', style: 'Ottoman Miniatures', n: 4660, q: 'deepcat:"Ottoman miniatures" filetype:bitmap' },
+  { id: 'cma-islamic', type: 'cleveland', kind: 'Manuscript', style: 'Islamic Manuscripts', n: 120, params: { type: 'Manuscript', department: 'Islamic Art' } },
+  // Byzantium, Russia, Ethiopia, medieval Europe
+  { id: 'byzantine', type: 'commons', kind: 'Icon', place: 'Byzantine Empire', style: 'Byzantine Icons', noArtist: true, n: 4670, q: 'deepcat:"Byzantine icons" filetype:bitmap' },
+  { id: 'ru-icons', type: 'commons', kind: 'Icon', place: 'Russia', style: 'Russian Icons', n: 720, q: 'deepcat:"Icons in the Tretyakov Gallery" filetype:bitmap' },
+  { id: 'ethiopia', type: 'commons', kind: 'Painting', place: 'Ethiopia', style: 'Ethiopian Orthodox Art', noArtist: true, n: 500, q: 'deepcat:"Ethiopian Orthodox art" filetype:bitmap' },
+  { id: 'cma-medieval', type: 'cleveland', kind: 'Manuscript', style: 'Illuminated Manuscripts', n: 320, params: { type: 'Manuscript', department: 'Medieval Art' } },
+  // Europe and the Americas
+  { id: 'dutch', type: 'commons', kind: 'Painting', place: 'Netherlands', style: 'Dutch Golden Age Painting', weight: 2, n: 24400, q: 'deepcat:"Dutch Golden Age paintings" filetype:bitmap' },
+  { id: 'preraph', type: 'commons', kind: 'Painting', place: 'Britain', style: 'Pre-Raphaelite Painting', n: 4220, q: 'deepcat:"Pre-Raphaelite paintings" filetype:bitmap' },
+  { id: 'shishkin', type: 'commons', kind: 'Painting', place: 'Russia', style: 'Russian Landscape Painting', artist: 'Ivan Shishkin', n: 330, q: 'deepcat:"Paintings by Ivan Shishkin" filetype:bitmap' },
+  { id: 'cma-europe', type: 'cleveland', kind: 'Painting', n: 310, params: { type: 'Painting', department: 'European Painting and Sculpture' } },
+  { id: 'cma-modern', type: 'cleveland', kind: 'Painting', n: 320, params: { type: 'Painting', department: 'Modern European Painting and Sculpture' } },
+  { id: 'hudson', type: 'commons', kind: 'Painting', place: 'United States', style: 'Hudson River School', n: 790, q: 'deepcat:"Hudson River School paintings" filetype:bitmap' },
+  { id: 'cma-american', type: 'cleveland', kind: 'Painting', n: 230, params: { type: 'Painting', department: 'American Painting and Sculpture' } },
+  { id: 'aztec', type: 'commons', kind: 'Codex', place: 'Mexico', style: 'Mesoamerican Codices', noArtist: true, n: 2050, q: 'deepcat:"Aztec codices" filetype:bitmap' },
+  { id: 'cma-americas', type: 'cleveland', kind: 'Sculpture', style: 'Art of the Americas', n: 210, params: { type: 'Sculpture', department: 'Art of the Americas' } },
+  // Africa, ancient Egypt
+  { id: 'cma-africa-mask', type: 'cleveland', kind: 'Mask', style: 'African Masks', n: 38, params: { type: 'Mask', department: 'African Art' } },
+  { id: 'cma-africa', type: 'cleveland', kind: 'Sculpture', style: 'African Sculpture', n: 110, params: { type: 'Sculpture', department: 'African Art' } },
+  { id: 'cma-egypt', type: 'cleveland', kind: 'Sculpture', style: 'Ancient Egyptian Art', n: 180, params: { type: 'Sculpture', department: 'Egyptian and Ancient Near Eastern Art' } },
   // Art Institute of Chicago (its image server sometimes blocks; the app skips it when it does)
   { id: 'aic-kuniyoshi', type: 'artic', kind: 'Woodblock print', artist: 'Utagawa Kuniyoshi', n: 143 },
   { id: 'aic-hokusai', type: 'artic', kind: 'Woodblock print', artist: 'Katsushika Hokusai', n: 504 },
@@ -382,7 +419,7 @@ function addToPool(items, mix) {
     known.add(it.url); pool.push(it); fresh.push(it);
   }
   if (mix) for (const it of shuffle(fresh.filter(x => !seen.has(x.url)))) {
-    bag.splice(Math.floor(Math.random() * (Math.min(bag.length, 14) + 1)), 0, it); queued.add(it.url);   // new art shows up soon
+    bag.splice(Math.floor(Math.random() * (Math.min(bag.length, 70) + 1)), 0, it); queued.add(it.url);   // new art shows up soon, spread out so one source never comes in a clump
   }
   return fresh.length;
 }
@@ -1196,6 +1233,9 @@ const ARTISTS = [            // one collection per artist, whatever spelling or 
   ['Warwick Goble', 'warwick goble|goble'],
   ['Ivan Aivazovsky', 'ivan aivazovsky|ivan konstantinovich aivazovsky|aivazovsky|hovhannes aivazian|иван айвазовский|айвазовский'],
   ['David Revoy', 'david revoy|revoy'],
+  ['Ivan Shishkin', 'ivan shishkin|ivan ivanovich shishkin|shishkin|иван шишкин|шишкин'],
+  ['Raja Ravi Varma', 'raja ravi varma|ravi varma'],
+  ['Andrei Rublev', 'andrei rublev|andrey rublev|andrej rublev|andrej rublëv|rublev|андрей рублёв|рублёв'],
 ].map(([name, al]) => [name, al.split('|').map(fold)]);
 const JP_ARTISTS = new Set(['Kuniyoshi', 'Yoshitoshi', 'Hokusai', 'Hiroshige', 'Kyōsai', 'Kunisada']);
 const SRC_ARTIST = { kuniyoshi: 'Kuniyoshi', yoshitoshi: 'Yoshitoshi', kyosai: 'Kyōsai', dore: 'Gustave Doré', rackham: 'Arthur Rackham',
@@ -1206,6 +1246,7 @@ const SRC_STYLE = { ryzom: 'Game Concept Art', revoy: 'Fantasy Concept Art', rev
   kyosai: 'Japanese Art', dore: 'Engraved Illustration', rackham: 'Fairy-Tale Illustration', clarke: 'Fairy-Tale Illustration',
   goble: 'Fairy-Tale Illustration', dulac: 'Fairy-Tale Illustration', nielsen: 'Fairy-Tale Illustration', bauer: 'Fairy-Tale Illustration',
   bilibin: 'Fairy-Tale Illustration', aivazovsky: 'Marine Painting', 'ov-concept': 'Concept Art', 'ov-matte': 'Matte Painting' };
+const SRC_CFG = Object.fromEntries(SOURCES.map(x => [x.id, x]));
 const NOT_ARTIST = /^(unknown|anonymous|unidentified|various|not specified|none|n a|ryzom|pepper carrot|wikimedia|commons|nasa|public domain|see below|author|creator|artist|own work)\b/;
 
 function matchArtist(text) {
@@ -1220,7 +1261,7 @@ function artistOf(it) {
   const raw = String(it.artist || '');
   let name = matchArtist(raw);
   if (!name && raw) {
-    let c = raw.replace(/\(.*$/s, '').replace(/\b(attributed to|workshop of|circle of|follower of|followers of|studio of|school of|style of|after)\b/gi, '')
+    let c = raw.replace(/\s+(\/|and|&)\s+.*$/s, '').replace(/\(.*$/s, '').replace(/\b(attributed to|workshop of|circle of|follower of|followers of|studio of|school of|style of|after)\b/gi, '')
       .replace(/\s+/g, ' ').trim();
     if (/[A-Za-z]/.test(c) && /[぀-鿿]/.test(c)) c = c.replace(/[　-鿿]+/g, ' ').replace(/\s+/g, ' ').trim();
     const f = fold(c), words = c.split(' ');
@@ -1231,7 +1272,12 @@ function artistOf(it) {
       name = japanese && words.length >= 2 && /^[\p{Script=Latin}\s'-]+$/u.test(c) ? words[words.length - 1] : c;   // "Utagawa Kunisada" -> "Kunisada"
     }
   }
-  if (!name) name = SRC_ARTIST[it.src] || null;                   // single-artist sources
+  if (name && SRC_CFG[it.src] && SRC_CFG[it.src].type === 'commons' && !matchArtist(name)) {
+    const w = name.split(' ');        // e.g. "SpeakingArch", "shakko", "Satdeep Gill" (uploaders) vs real artists
+    const ok = w.length >= 2 && w.every(x => /^(\p{Lu}|van|von|de|da|del|der|di|la|le|of|al|el|y|ibn|bin)/u.test(x));
+    if (!ok || SRC_CFG[it.src].noArtist) name = null;
+  }
+  if (!name) name = SRC_ARTIST[it.src] || (SRC_CFG[it.src] && SRC_CFG[it.src].artist) || null;                   // single-artist sources
   return name ? { name, key: fold(name) } : null;
 }
 function cultureOf(pl) {
@@ -1246,7 +1292,7 @@ function styleOf(it, artist) {
   const china = /china|chinese/.test(pl) || it.nat === 'Chinese';
   if (/ryzom/.test(pl + ' ' + t) || k === 'game concept art') return 'Game Concept Art';
   if (/pepper carrot/.test(pl) || (artist && artist.name === 'David Revoy')) return 'Fantasy Concept Art';
-  const known = SRC_STYLE[it.src];
+  const known = SRC_STYLE[it.src] || (SRC_CFG[it.src] && SRC_CFG[it.src].style);
   if (!known || it.src === 'cma-prints') {
     if (/woodblock/.test(m + ' ' + k)) return japan ? 'Ukiyo-e Prints' : 'Woodblock Prints';
     if (it.src === 'cma-prints') return 'Japanese Prints';
@@ -1266,6 +1312,24 @@ function styleOf(it, artist) {
   if (k === 'painting') { const c = cultureOf(pl); return c ? c + ' Painting' : 'Painting'; }
   return it.kind ? titleCase(it.kind) : 'Illustration';
 }
+const REGIONS = [   // first match wins; reads the artwork's place and nationality
+  [/\b(china|chinese)\b/, 'China'], [/\b(japan|japanese)\b/, 'Japan'], [/\b(korea|korean)\b/, 'Korea'],
+  [/\b(tibet|tibetan|nepal|bhutan)\b/, 'Tibet & the Himalayas'], [/\b(india|indian|rajput|mughal|pahari|deccan)\b/, 'India'],
+  [/\b(thailand|cambodia|indonesia|java|vietnam|burma|myanmar|laos)\b/, 'Southeast Asia'],
+  [/\b(iran|persia|persian)\b/, 'Iran (Persia)'], [/\bottoman\b/, 'Ottoman Empire'], [/\b(turkey|anatolia)\b/, 'Turkey'], [/\bbyzantine\b/, 'Byzantine Empire'],
+  [/\b(russia|russian)\b/, 'Russia'], [/\b(ethiopia|ethiopian)\b/, 'Ethiopia'], [/\b(egypt|egyptian)\b/, 'Egypt'],
+  [/\b(africa|african|congo|nigeria|mali|ghana|cameroon|gabon|angola|kenya|burkina faso|cote d ivoire)\b/, 'Africa'],
+  [/\b(mexico|aztec|maya|guatemala|peru|inca|costa rica|panama|colombia|ecuador|bolivia|mesoamerica)\b/, 'Ancient Americas'],
+  [/\b(netherlands|dutch|flanders|flemish|belgium)\b/, 'Netherlands & Flanders'], [/\b(france|french|paris)\b/, 'France'],
+  [/\b(italy|italian)\b/, 'Italy'], [/\b(spain|spanish)\b/, 'Spain'], [/\b(germany|german)\b/, 'Germany'],
+  [/\b(britain|british|england|english|scotland|london)\b/, 'Britain'], [/\b(norway|norwegian)\b/, 'Norway'], [/\b(sweden|swedish)\b/, 'Sweden'],
+  [/\b(switzerland|swiss)\b/, 'Switzerland'], [/\b(united states|america|american)\b/, 'United States'],
+];
+function regionOf(it, artist) {
+  const f = ' ' + fold([it.place, it.nat].filter(Boolean).join(' ')) + ' ';
+  for (const [re, name] of REGIONS) if (re.test(f)) return name;
+  return artist && JP_ARTISTS.has(artist.name) ? 'Japan' : null;
+}
 function seriesOf(it) {
   if (it.series) return String(it.series).replace(/\s*\([^)]*\)/g, '').trim();
   const pl = fold(it.place) + ' ' + fold(it.title);
@@ -1276,7 +1340,7 @@ function seriesOf(it) {
 function classify(rec) {
   if (!rec._c) {
     const it = rec.item || {}, artist = artistOf(it);
-    rec._c = { artist, style: styleOf(it, artist), series: seriesOf(it) };
+    rec._c = { artist, style: styleOf(it, artist), series: seriesOf(it), region: regionOf(it, artist) };
   }
   return rec._c;
 }
@@ -1291,6 +1355,7 @@ function buildCollections() {
     if (c.artist) add('a:' + c.artist.key, 'artist', c.artist.name, rec);
     add('s:' + fold(c.style), 'style', c.style, rec);                // the style collection is always kept
     if (c.series) add('r:' + fold(c.series), 'series', c.series, rec);
+    if (c.region) add('p:' + fold(c.region), 'region', c.region, rec);
   }
   for (const c of map.values()) c.recs.sort((a, b) => b.likedAt - a.likedAt);
   return [...map.values()];
@@ -1303,7 +1368,7 @@ const libEl = document.getElementById('lib'), libGrid = document.getElementById(
 const libQ = document.getElementById('libQ'), libSub = document.getElementById('libSub'), libMenu = document.getElementById('libMenu');
 const paneList = libEl.querySelector('.pane-list'), paneColl = libEl.querySelector('.pane-coll');
 let libOpen = false, libFilter = 'all', libSort = 'count', libQuery = '', collKey = null, collAnim = false, renderT = 0;
-const TYPE = { artist: 'Artist', style: 'Style', series: 'Series', all: 'Your likes' };
+const TYPE = { artist: 'Artist', style: 'Style', series: 'Series', region: 'Place', all: 'Your likes' };
 function accentOf(it) {
   const h = it && it.hsl ? it.hsl[0] : hashHue((it && it.url) || 'x'), s = it && it.hsl ? clamp(it.hsl[1], 30, 75) : 55;
   return `hsl(${Math.round(h)},${Math.round(s)}%,70%)`;
@@ -1344,14 +1409,16 @@ function renderLib() {
   if (!libOpen) return;
   const all = [...likes.values()].sort((a, b) => b.likedAt - a.likedAt);
   const cols = buildCollections();
-  const nArt = cols.filter(c => c.type === 'artist').length, nSty = cols.length - nArt;
+  const nArt = cols.filter(c => c.type === 'artist').length, nPla = cols.filter(c => c.type === 'region').length, nSty = cols.length - nArt - nPla;
   libSub.textContent = all.length ? `${all.length} like${all.length === 1 ? '' : 's'} · ${cols.length} collection${cols.length === 1 ? '' : 's'}` : 'Nothing liked yet';
   libEl.querySelector('[data-f="artist"] em').textContent = nArt || '';
   libEl.querySelector('[data-f="style"] em').textContent = nSty || '';
+  libEl.querySelector('[data-f="place"] em').textContent = nPla || '';
   libEl.classList.toggle('is-empty', !all.length);
   if (!all.length) { libGrid.innerHTML = EMPTY; if (collKey) renderColl(); return; }
   const q = fold(libQuery);
-  let list = cols.filter(c => libFilter === 'all' || (libFilter === 'artist' ? c.type === 'artist' : c.type !== 'artist'));
+  const want = { artist: t => t === 'artist', style: t => t === 'style' || t === 'series', place: t => t === 'region' };
+  let list = cols.filter(c => libFilter === 'all' || want[libFilter](c.type));
   if (q) list = list.filter(c => fold(c.name).includes(q) || c.recs.some(r => fold(r.item.title).includes(q) || fold(r.item.artist).includes(q)));
   list.sort((a, b) => ((b.recs.length > 1) - (a.recs.length > 1))       // single-item collections go below the larger ones
     || (libSort === 'count' ? (b.recs.length - a.recs.length) || (b.last - a.last) : (b.last - a.last)) || a.name.localeCompare(b.name));
@@ -1582,6 +1649,8 @@ function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); 
    ============================================================ */
 const JUNK = /\b(grave|stamp|logo|icon|screenshot|signature|photograph|photo|museum|exhibition|plaque|building|map|diagram|cover page|title page|text page)\b/i;
 
+// file names like "MET LC-2015 224c sr1-001" are catalogue codes, not titles
+const cleanTitle = t => (/^[\sA-Z0-9._-]*\d[\sA-Za-z0-9._-]*$/.test(t) && !/[a-z]{4}/.test(t) ? '' : t).slice(0, 120);
 async function fetchCommons(src) {
   if (src.offset == null) src.offset = Math.floor(Math.random() * Math.max(1, (src.n || 100) - 24));
   const p = new URLSearchParams({
@@ -1609,7 +1678,7 @@ async function fetchCommons(src) {
     const dt = v('DateTimeOriginal');
     return {
       url,   // one standard 1280px thumbnail per file: the back face reuses it from cache (gentle on Wikimedia's rate limits)
-      title: (v('ObjectName') || name).slice(0, 120), artist, source: ii.descriptionurl, credit: 'Wikimedia Commons',
+      title: cleanTitle(v('ObjectName').replace(/\s*(title|label)\s*QS:.*$/s, '').trim() || name), artist, source: ii.descriptionurl, credit: 'Wikimedia Commons',
       license: v('LicenseShortName'), date: dt.slice(0, 40), y: yearOf(dt), kind: src.kind, place: src.place, src: src.id,
       about: about.length > 24 && about.toLowerCase() !== name.toLowerCase() ? (about.length > 340 ? about.slice(0, 337).replace(/\s+\S*$/, '') + '…' : about) : ''
     };
@@ -1774,7 +1843,7 @@ store.all().then(list => {
 });
 
 // small hook for automated tests / debugging (no UI)
-window.__feed = { feed, pool, bad, seen, get cur() { return cur; }, live, ready, hostCool, likes, like, buildCollections, classify, viewer, get libOpen() { return libOpen; } };
+window.__feed = { feed, pool, bad, seen, get cur() { return cur; }, live, ready, hostCool, likes, like, buildCollections, classify, viewer, FETCH, get libOpen() { return libOpen; } };
 })();
 </script>
 </body>
