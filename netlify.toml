@@ -2,6 +2,8 @@
 # The site is plain files: nothing to build, publish the repository as it is.
 [build]
   publish = "."
+  # installs the one package the dashboard functions use (@netlify/blobs)
+  command = "cd netlify/functions && npm ci --omit=dev --no-audit --no-fund"
 
 # Small functions that count visits for the owner's dashboard.
 [functions]
@@ -34,3 +36,10 @@
   [headers.values]
     Cache-Control = "no-store"
     X-Robots-Tag = "noindex, nofollow"
+
+# keep the function files and their packages out of public reach
+[[redirects]]
+  from = "/netlify/*"
+  to = "/404.html"
+  status = 404
+  force = true
