@@ -1,0 +1,25 @@
+# Netlify settings for Nahim (https://nahim.netlify.app)
+# The site is plain files: nothing to build, publish the repository as it is.
+[build]
+  publish = "."
+
+# Always fetch the newest app and service worker, so updates reach phones straight away.
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "no-cache"
