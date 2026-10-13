@@ -90,8 +90,15 @@ td.r,th.r{text-align:right;padding-right:0}
       <label class="live" style="color:var(--dim);cursor:pointer"><input type="checkbox" id="hideEmpty" checked style="accent-color:#ffc061"> Hide empty visits <span id="hiddenN"></span></label>
       <button class="btn" id="refresh">Refresh</button>
       <button class="btn" id="out">Lock</button>
+      <button class="btn" id="reset" style="color:var(--bad)">Reset data</button>
     </div>
   </header>
+
+  <section class="card" id="rbox" hidden style="border-color:rgba(255,107,129,.5)">
+    <h2 style="color:var(--bad)">Delete all dashboard data?</h2>
+    <p style="margin:0 0 12px;color:var(--dim)">This permanently removes every recorded visit, so all the numbers start again from zero. It cannot be undone. People's likes on their own phones are not touched.</p>
+    <div class="tools"><button class="btn" id="rgo" style="background:#7a1626;border-color:#ff6b81">Yes, delete everything</button><button class="btn" id="rno">Cancel</button><span id="rmsg" style="color:var(--dim)"></span></div>
+  </section>
 
   <section class="kpis" id="kpis"></section>
 
@@ -247,6 +254,18 @@ $('f').addEventListener('submit', e => { e.preventDefault(); const v = $('key').
 $('range').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; days = Number(b.dataset.d); LSs('nahim:dashdays', days); for (const x of $('range').children) x.setAttribute('aria-pressed', String(x === b)); load(); });
 for (const x of $('range').children) x.setAttribute('aria-pressed', String(Number(x.dataset.d) === days));
 $('refresh').addEventListener('click', load);
+$('reset').addEventListener('click', () => { $('rmsg').textContent = ''; $('rbox').hidden = false; $('rbox').scrollIntoView({ block: 'nearest' }); });
+$('rno').addEventListener('click', () => { $('rbox').hidden = true; });
+$('rgo').addEventListener('click', async () => {
+  $('rmsg').textContent = 'Deleting…'; $('rgo').disabled = true;
+  try {
+    const r = await fetch('/api/stats', { method: 'POST', headers: { 'x-key': LSg('nahim:dashkey') || '' } });
+    if (!r.ok) throw new Error(r.status);
+    const j = await r.json(); $('rbox').hidden = true; await load(); $('live').hidden = true;
+    $('rmsg').textContent = '';
+  } catch (e) { $('rmsg').textContent = 'Could not delete (' + e.message + '). Try again.'; }
+  $('rgo').disabled = false;
+});
 $('hideEmpty').checked = LSg('nahim:dashhide') !== '0';
 $('hideEmpty').addEventListener('change', () => { LSs('nahim:dashhide', $('hideEmpty').checked ? '1' : '0'); if (lastData) render(lastData); });
 $('out').addEventListener('click', () => { LSs('nahim:dashkey', null); show(true); });
