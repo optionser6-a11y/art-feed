@@ -33,6 +33,6 @@ export async function handle(req, country, store) {
 }
 
 export default async (req, context) =>
-  handle(req, context?.geo?.country?.code, getStore('nahim-stats'));
+  handle(req, context?.geo?.country?.code, getStore({ name: 'nahim-stats', consistency: 'strong' }));
 
 export const config = { path: '/api/track' };

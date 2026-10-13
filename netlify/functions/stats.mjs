@@ -7,17 +7,14 @@ const same = (a, b) => { const x = Buffer.from(String(a)), y = Buffer.from(Strin
 const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 
 export async function load(store, days, now = Date.now()) {
-  const out = [];
-  for (let i = 0; i < days; i++) {
-    const day = dayOf(now - i * 86400e3);
+  // every day is fetched at the same time, and so are the records inside it
+  const perDay = await Promise.all(Array.from({ length: days }, async (_, i) => {
     let blobs = [];
-    try { blobs = (await store.list({ prefix: `s/${day}/` })).blobs; } catch (e) {}
-    for (let j = 0; j < blobs.length; j += 25) {
-      const part = await Promise.all(blobs.slice(j, j + 25).map(b => store.get(b.key, { type: 'json' }).catch(() => null)));
-      for (const r of part) if (r) out.push(r);
-    }
-  }
-  return out;
+    try { blobs = (await store.list({ prefix: `s/${dayOf(now - i * 86400e3)}/` })).blobs; } catch (e) {}
+    const recs = await Promise.all(blobs.map(b => store.get(b.key, { type: 'json' }).catch(() => null)));
+    return recs.filter(Boolean);
+  }));
+  return perDay.flat();
 }
 
 export async function wipe(store, now = Date.now()) {
@@ -39,6 +36,6 @@ export async function handle(req, key, store, now = Date.now()) {
   return json({ now, days, sessions });
 }
 
-export default async (req) => handle(req, process.env.DASH_KEY, getStore('nahim-stats'));
+export default async (req) => handle(req, process.env.DASH_KEY, getStore({ name: 'nahim-stats', consistency: 'strong' }));
 
 export const config = { path: '/api/stats' };

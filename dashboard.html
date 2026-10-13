@@ -85,7 +85,7 @@ td.r,th.r{text-align:right;padding-right:0}
     <img src="brand/mind-logo.webp" alt="">
     <h1>Nahim<small>Usage dashboard</small></h1>
     <div class="tools">
-      <span class="live" id="live" hidden><i></i><span id="liveN"></span></span>
+      <span class="live" id="upd" style="color:var(--dim)"></span><span class="live" id="live" hidden><i></i><span id="liveN"></span></span>
       <div class="seg" id="range" role="group" aria-label="Time range"><button data-d="7">7 days</button><button data-d="30" aria-pressed="true">30 days</button><button data-d="90">90 days</button></div>
       <label class="live" style="color:var(--dim);cursor:pointer"><input type="checkbox" id="hideEmpty" checked style="accent-color:#ffc061"> Hide empty visits <span id="hiddenN"></span></label>
       <button class="btn" id="refresh">Refresh</button>
@@ -135,7 +135,7 @@ const dayKey = t => { const d = new Date(t); return d.getFullYear() + '-' + Stri
 let names = null; try { names = new Intl.DisplayNames(['en'], { type: 'region' }); } catch (e) {}
 const flag = c => c && c.length === 2 ? String.fromCodePoint(...[...c].map(x => 127397 + x.charCodeAt(0))) : '🌐';
 const country = c => c ? (names ? names.of(c) : c) : 'Unknown';
-let days = Number(LSg('nahim:dashdays')) || 30, timer = null, lastData = null;
+let days = Number(LSg('nahim:dashdays')) || 30, timer = null, lastData = null, stamp = 0;
 
 function show(gate, msg, setup) { $('gate').hidden = !gate; $('app').hidden = gate; $('msg').textContent = msg || ''; $('setup').hidden = !setup; }
 
@@ -148,7 +148,7 @@ async function load() {
   if (r.status === 503) { LSs('nahim:dashkey', null); return show(true, 'The dashboard key is not set up on Netlify yet.', true); }
   if (r.status === 401) { LSs('nahim:dashkey', null); return show(true, 'That key is not right. Try again.'); }
   if (!r.ok) return show(true, 'Something went wrong (' + r.status + ').');
-  lastData = await r.json(); render(lastData); show(false);
+  lastData = await r.json(); render(lastData); show(false); stamp = Date.now();
 }
 
 function bars(svg, vals, labels, color, fmt) {
@@ -270,7 +270,22 @@ $('hideEmpty').checked = LSg('nahim:dashhide') !== '0';
 $('hideEmpty').addEventListener('change', () => { LSs('nahim:dashhide', $('hideEmpty').checked ? '1' : '0'); if (lastData) render(lastData); });
 $('out').addEventListener('click', () => { LSs('nahim:dashkey', null); show(true); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && LSg('nahim:dashkey')) load(); });
+// quick refresh: only the last 2 days are fetched and merged in, so "live" and new visits show within seconds
+let quickBusy = false;
+async function quick() {
+  if (document.hidden || quickBusy || !lastData || $('app').hidden || !LSg('nahim:dashkey')) return;
+  quickBusy = true;
+  try {
+    const r = await fetch('/api/stats?days=2', { headers: { 'x-key': LSg('nahim:dashkey') }, cache: 'no-store' });
+    if (!r.ok) return;
+    const j = await r.json(), from = new Date(new Date(j.now - 86400e3).toISOString().slice(0, 10) + 'T00:00:00Z').getTime();
+    lastData = { now: j.now, days: lastData.days, sessions: lastData.sessions.filter(s => s.t0 < from).concat(j.sessions) };
+    render(lastData); stamp = Date.now();
+  } catch (e) {} finally { quickBusy = false; }
+}
+setInterval(quick, 5000);
 setInterval(() => { if (!document.hidden && LSg('nahim:dashkey')) load(); }, 60000);
+setInterval(() => { if (stamp) $('upd').textContent = 'updated ' + (Date.now() - stamp < 4000 ? 'just now' : Math.round((Date.now() - stamp) / 1000) + 's ago'); }, 1000);
 load();
 })();
 </script>

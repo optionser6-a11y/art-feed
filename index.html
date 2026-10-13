@@ -2161,10 +2161,10 @@ store.all().then(list => {
       try { if (!(navigator.sendBeacon && navigator.sendBeacon('/api/track', new Blob([body], { type: 'text/plain' })))) fetch('/api/track', { method: 'POST', body, keepalive: true }).catch(() => {}); } catch (e) {}
     };
     const tick = () => { const n = Date.now(); if (last && !document.hidden) active += Math.min(5, (n - last) / 1000); last = document.hidden ? 0 : n; };
-    setInterval(() => { tick(); if (!document.hidden && Date.now() - sentAt > 30000) send(); }, 5000);
+    setInterval(() => { tick(); if (!document.hidden && Date.now() - sentAt > (Date.now() - t0 < 120000 ? 10000 : 30000)) send(); }, 5000);   // every 10 s for the first 2 minutes, then every 30 s
     document.addEventListener('visibilitychange', () => { tick(); last = document.hidden ? 0 : Date.now(); if (document.hidden) send(); });
     window.addEventListener('pagehide', () => { tick(); send(true); });
-    last = Date.now(); setTimeout(send, 3000);
+    last = Date.now(); setTimeout(send, 1000);
   } catch (e) {}
 })();
 
