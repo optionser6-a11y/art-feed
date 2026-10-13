@@ -7,11 +7,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Art Feed">
+<meta name="apple-mobile-web-app-title" content="Nahim">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>Art Feed</title>
+<title>Nahim</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&display=swap" rel="stylesheet">
@@ -250,7 +250,7 @@ button{font:inherit;color:inherit}
 </style>
 </head>
 <body>
-<main id="feed" aria-label="Art feed"></main>
+<main id="feed" aria-label="Nahim art feed"></main>
 <button id="libBtn" type="button" aria-label="Your likes and collections">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><rect x="7.5" y="3" width="13" height="15" rx="2.5" opacity=".55"/><rect x="3.5" y="6" width="13" height="15" rx="2.5" fill="rgba(12,12,14,.55)"/><path fill="currentColor" stroke="none" d="M10 17.2l-.7-.6c-2.4-2.2-4-3.6-4-5.4 0-1.4 1.1-2.5 2.5-2.5.8 0 1.6.4 2.2 1 .6-.6 1.4-1 2.2-1 1.4 0 2.5 1.1 2.5 2.5 0 1.8-1.6 3.2-4 5.4l-.7.6z"/></svg>
 </button>
@@ -1511,9 +1511,9 @@ async function exportLikes() {
   for (const r of [...likes.values()].sort((a, b) => a.likedAt - b.likedAt)) {
     out.push({ url: r.url, item: r.item, likedAt: r.likedAt, tw: r.tw || 0, th: r.th || 0, thumb: r.thumb instanceof Blob ? await blobToDataURL(r.thumb) : null });
   }
-  const blob = new Blob([JSON.stringify({ app: 'art-feed', type: 'likes', version: 1, exportedAt: new Date().toISOString(), count: out.length, likes: out })], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify({ app: 'nahim', type: 'likes', version: 1, exportedAt: new Date().toISOString(), count: out.length, likes: out })], { type: 'application/json' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `art-feed-likes-${new Date().toISOString().slice(0, 10)}.json`;
+  a.href = URL.createObjectURL(blob); a.download = `nahim-likes-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
   toast(`Exported ${out.length} like${out.length === 1 ? '' : 's'}`);
@@ -1533,9 +1533,9 @@ function cleanItem(x, url) {
 }
 async function importLikes(file) {
   let data;
-  try { data = JSON.parse(await file.text()); } catch (e) { return toast('That file is not an Art Feed backup'); }
+  try { data = JSON.parse(await file.text()); } catch (e) { return toast('That file is not a Nahim backup'); }
   const list = Array.isArray(data) ? data : data && data.likes;
-  if (!Array.isArray(list)) return toast('That file is not an Art Feed backup');
+  if (!Array.isArray(list)) return toast('That file is not a Nahim backup');
   let added = 0;
   for (const x of list) {
     const url = x && typeof x.url === 'string' ? x.url : '';
