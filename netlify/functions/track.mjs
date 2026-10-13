@@ -14,7 +14,7 @@ export function clean(b, country, now = Date.now()) {
     s, v, t0: Math.round(t0),
     f: tag(b.f, /^[a-z0-9_-]{1,20}$/i).toLowerCase(),
     nv: b.nv === true, d: ['android', 'ios', 'desktop'].includes(b.d) ? b.d : 'desktop', a: b.a ? 1 : 0,
-    t: num(b.t, 86400), w: num(b.w, 100000), l: num(b.l, 100000),
+    t: num(b.t, 86400), w: num(b.w, 100000), l: num(b.l, 100000), o: b.o === 0 ? 0 : 1,
     c: tag(country, /^[A-Z]{2}$/), u: now,
   };
 }

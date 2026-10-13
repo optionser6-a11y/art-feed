@@ -2152,15 +2152,15 @@ store.all().then(list => {
     const dev = /android/i.test(navigator.userAgent) ? 'android' : /iphone|ipad|ipod/i.test(navigator.userAgent) ? 'ios' : 'desktop';
     const app = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
     let active = 0, last = 0, sentAt = 0;
-    const send = () => {
+    const send = closing => {
       sentAt = Date.now();
-      const body = JSON.stringify({ v: vid, s: sid, t0, f: from, nv: isNew, d: dev, a: app ? 1 : 0, t: Math.round(active), w: trk.swipes, l: trk.likes });
+      const body = JSON.stringify({ v: vid, s: sid, t0, f: from, nv: isNew, d: dev, a: app ? 1 : 0, t: Math.round(active), w: trk.swipes, l: trk.likes, o: closing || document.hidden ? 0 : 1 });
       try { if (!(navigator.sendBeacon && navigator.sendBeacon('/api/track', new Blob([body], { type: 'text/plain' })))) fetch('/api/track', { method: 'POST', body, keepalive: true }).catch(() => {}); } catch (e) {}
     };
     const tick = () => { const n = Date.now(); if (last && !document.hidden) active += Math.min(5, (n - last) / 1000); last = document.hidden ? 0 : n; };
     setInterval(() => { tick(); if (!document.hidden && Date.now() - sentAt > 30000) send(); }, 5000);
     document.addEventListener('visibilitychange', () => { tick(); last = document.hidden ? 0 : Date.now(); if (document.hidden) send(); });
-    window.addEventListener('pagehide', () => { tick(); send(); });
+    window.addEventListener('pagehide', () => { tick(); send(true); });
     last = Date.now(); setTimeout(send, 3000);
   } catch (e) {}
 })();

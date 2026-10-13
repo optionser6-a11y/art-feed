@@ -172,7 +172,8 @@ function render(data) {
     v.sessions++; v.time += s.t; v.days.add(dayKey(s.t0)); v.isNew = v.isNew || s.nv; v.first = Math.min(v.first, s.t0); v.last = Math.max(v.last, s.u || s.t0); if (s.f) v.f = s.f;
   }
   const nV = visitors.size, nS = S.length, tTime = S.reduce((a, s) => a + s.t, 0), swipes = S.reduce((a, s) => a + s.w, 0), likes = S.reduce((a, s) => a + s.l, 0);
-  const online = S.filter(s => now - (s.u || 0) < 90000);
+  const isOn = s => s.o !== 0 && now - (s.u || 0) < 75000;          // still open on screen, pinged in the last 75 s
+  const online = [...new Set(S.filter(isOn).map(s => s.v))];       // one per person, even with two tabs
   $('live').hidden = !online.length; $('liveN').textContent = online.length + ' online now';
   const todayK = dayKey(now), todayV = new Set(S.filter(s => dayKey(s.t0) === todayK).map(s => s.v)).size;
   const newV = [...visitors.values()].filter(v => v.isNew).length;
@@ -225,7 +226,7 @@ function render(data) {
   // recent
   $('recentS').textContent = 'latest ' + Math.min(25, nS);
   $('recent').innerHTML = nS ? `<table><tr><th>When</th><th>Link</th><th>Country</th><th>Device</th><th class="r">Time</th><th class="r">Seen</th><th class="r">Likes</th></tr>` +
-    S.slice(0, 25).map(s => `<tr><td>${now - (s.u || 0) < 90000 ? '<span class="tag on">live</span>' : ago(now - s.t0)}</td><td>${s.f ? esc(s.f) : '<span style="color:var(--dim)">–</span>'}</td><td>${flag(s.c)} ${esc(s.c || '–')}</td><td>${esc(dn[s.d] || s.d)}${s.a ? ' · app' : ''}</td><td class="r">${dur(s.t)}</td><td class="r">${s.w}</td><td class="r">${s.l}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet. Open Nahim on a phone and come back in a minute.</div>';
+    S.slice(0, 25).map(s => `<tr><td>${isOn(s) ? '<span class="tag on">live</span>' : ago(now - s.t0)}</td><td>${s.f ? esc(s.f) : '<span style="color:var(--dim)">–</span>'}</td><td>${flag(s.c)} ${esc(s.c || '–')}</td><td>${esc(dn[s.d] || s.d)}${s.a ? ' · app' : ''}</td><td class="r">${dur(s.t)}</td><td class="r">${s.w}</td><td class="r">${s.l}</td></tr>`).join('') + '</table>' : '<div class="empty">No visits yet. Open Nahim on a phone and come back in a minute.</div>';
 }
 
 $('f').addEventListener('submit', e => { e.preventDefault(); const v = $('key').value.trim(); if (!v) return; LSs('nahim:dashkey', v); $('key').value = ''; $('msg').textContent = 'Checking…'; load(); });
