@@ -1,6 +1,6 @@
 // Service worker: makes Art Feed installable and lets the app itself open
 // without a connection. Artwork always comes fresh from the network.
-const CACHE = 'artfeed-shell-v2';
+const CACHE = 'artfeed-shell-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
